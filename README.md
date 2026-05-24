@@ -15,7 +15,7 @@
  Data Domain: Maritime AIS, NOAA Metocean Datasets
  
  ## Impact
- # Operational Efficiency:
+ ### Operational Efficiency:
  Enabled real-time performance tracking, improving ETA accuracy and supporting data-driven fuel consumption reduction strategies.
- # Decision Support:
+ ### Decision Support:
  Streamlined complex maritime data into actionable intelligence, reducing manual data processing time for fleet operations teams. 
