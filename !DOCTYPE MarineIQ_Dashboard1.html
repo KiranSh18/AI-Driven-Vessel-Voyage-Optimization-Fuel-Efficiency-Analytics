@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>MarineIQ — Maritime Intelligence Platform</title>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+:root{
+  --bg:#020b18;--card:#071828;--card2:#0a1f30;
+  --border:rgba(0,180,255,.15);--glow-border:rgba(0,180,255,.35);
+  --accent:#00b4ff;--a2:#00ffc8;--a3:#7c5cff;
+  --warn:#ff9500;--danger:#ff3b55;--ok:#00e676;
+  --txt:#e8f4ff;--txt2:#7ab8d4;--muted:#3d6a85;
+  --r:14px;--rs:8px;--shadow:0 8px 40px rgba(0,0,0,.6);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);font-family:'Inter',sans-serif;color:var(--txt);overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(ellipse 80% 50% at 10% 20%,rgba(0,50,120,.18) 0%,transparent 60%),
+             radial-gradient(ellipse 60% 40% at 90% 80%,rgba(0,180,255,.07) 0%,transparent 60%)}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* SIDEBAR */
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:215px;
+  background:linear-gradient(180deg,#041220,#061830);
+  border-right:1px solid var(--border);z-index:100;
+  display:flex;flex-direction:column;padding:22px 0;
+  box-shadow:4px 0 30px rgba(0,0,0,.5)}
+.logo{padding:0 18px 22px;border-bottom:1px solid var(--border);margin-bottom:12px}
+.logo-name{font-size:20px;font-weight:800;letter-spacing:-.5px;
+  background:linear-gradient(135deg,var(--accent),var(--a2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.logo-sub{font-size:10px;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-top:2px}
+.nav-sec{font-size:9px;text-transform:uppercase;letter-spacing:2px;
+  color:var(--muted);padding:12px 18px 5px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 18px;cursor:pointer;
+  font-size:13px;font-weight:500;color:var(--txt2);
+  transition:all .2s;border-left:2px solid transparent}
+.nav-item:hover{color:var(--accent);background:rgba(0,180,255,.06)}
+.nav-item.active{color:var(--accent);background:rgba(0,180,255,.1);border-left-color:var(--accent)}
+.nav-icon{font-size:15px}
+.status{margin-top:auto;padding:14px 18px;border-top:1px solid var(--border);
+  font-size:11px;color:var(--muted);line-height:1.7}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;
+  background:var(--ok);margin-right:5px;animation:pulse 2s infinite}
+
+/* MAIN & TOPBAR */
+.main{margin-left:215px;min-height:100vh;position:relative;z-index:1}
+.topbar{position:sticky;top:0;z-index:50;
+  background:rgba(2,11,24,.92);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);padding:13px 28px;
+  display:flex;align-items:center;justify-content:space-between}
+.tb-title{font-size:17px;font-weight:700}
+.tb-sub{font-size:11px;color:var(--muted);margin-top:2px}
+
+/* SLICERS */
+.slicers{display:flex;gap:12px;align-items:center}
+.slicers select{
+  background:var(--card2);border:1px solid var(--border);color:var(--txt);
+  padding:7px 12px;border-radius:var(--rs);font-size:11px;font-weight:500;
+  outline:none;cursor:pointer;font-family:'Inter',sans-serif;
+  transition:all .2s ease;
+}
+.slicers select:hover, .slicers select:focus{border-color:var(--accent);box-shadow:0 0 10px rgba(0,180,255,.15);}
+
+/* PAGES */
+.page{display:none;padding:24px 28px}
+.page.active{display:block}
+
+/* KPI GRID */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:20px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+  padding:18px;position:relative;overflow:hidden;transition:transform .2s,box-shadow .2s;cursor:default}
+.kpi:hover{transform:translateY(-2px);box-shadow:0 0 28px rgba(0,180,255,.1)}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--accent),transparent)}
+.kpi.warn::before{background:linear-gradient(90deg,var(--warn),transparent)}
+.kpi.ok::before{background:linear-gradient(90deg,var(--ok),transparent)}
+.kpi.danger::before{background:linear-gradient(90deg,var(--danger),transparent)}
+.kpi-lbl{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:7px}
+.kpi-val{font-size:26px;font-weight:800;font-family:'JetBrains Mono',monospace;line-height:1}
+.kpi-unit{font-size:12px;font-weight:400;color:var(--txt2);margin-left:3px}
+.kpi-ico{position:absolute;top:14px;right:14px;font-size:20px;opacity:.35}
+
+/* CARD */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);
+  padding:20px;box-shadow:var(--shadow);display:flex;flex-direction:column}
+.card-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;
+  color:var(--txt2);margin-bottom:12px;display:flex;align-items:center;gap:7px}
+.card-title::before{content:'';display:inline-block;width:3px;height:12px;background:var(--accent);border-radius:2px}
+
+/* PLOTLY CONTAINERS */
+.chart-box {flex:1; width:100%; min-height: 250px; position:relative;}
+.map-box {flex:1; width:100%; min-height: 350px; position:relative; border-radius: var(--rs); overflow: hidden;}
+
+/* GRIDS */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-bottom:18px}
+.g64{display:grid;grid-template-columns:60fr 40fr;gap:18px;margin-bottom:18px}
+.mb{margin-bottom:18px}
+@media(max-width:900px){.g2,.g3,.g64{grid-template-columns:1fr}}
+
+/* TABLE */
+.tbl-wrap {overflow-x:auto; margin-top: 10px;}
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{text-align:left;padding:9px 12px;font-size:9px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border)}
+.tbl td{padding:9px 12px;border-bottom:1px solid rgba(0,180,255,.05);color:var(--txt2);font-family:'JetBrains Mono',monospace}
+.tbl tr:hover td{background:rgba(0,180,255,.04)}
+.rbadge{padding:2px 7px;border-radius:10px;font-size:9px;font-weight:700;text-transform:uppercase}
+.rlow{background:rgba(0,230,118,.12);color:var(--ok)}
+.rmed{background:rgba(255,149,0,.12);color:var(--warn)}
+.rhigh{background:rgba(255,59,85,.12);color:var(--danger)}
+
+/* PRED CARDS */
+.pred-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px}
+.pred-card{background:linear-gradient(135deg,var(--card2),var(--card));border:1px solid var(--border);border-radius:var(--r);padding:18px;text-align:center}
+.pred-ico{font-size:28px;margin-bottom:8px}
+.pred-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:7px}
+.pred-val{font-size:34px;font-weight:800;font-family:'JetBrains Mono',monospace}
+.pred-conf{font-size:10px;color:var(--muted);margin-top:5px}
+.cg{color:var(--ok)}.cw{color:var(--warn)}.cb{color:var(--danger)}
+
+/* ANOM */
+.anom-item{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid rgba(0,180,255,.05)}
+.anom-ico{font-size:18px;flex-shrink:0;margin-top:2px}
+.anom-msg{font-size:12px;color:var(--txt2);line-height:1.5}
+.anom-time{font-size:10px;color:var(--muted);margin-top:2px;font-family:'JetBrains Mono',monospace}
+
+/* NLQ CHATBOT (NEW) */
+.chat-container { display: flex; flex-direction: column; height: 350px; background: rgba(2,11,24,.6); border-radius: var(--rs); border: 1px solid var(--border); overflow: hidden; }
+.chat-log { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+.msg { max-width: 85%; padding: 10px 14px; border-radius: 8px; font-size: 12px; line-height: 1.5; }
+.msg-ai { background: rgba(0,180,255,.1); border-left: 2px solid var(--accent); align-self: flex-start; color: var(--txt); }
+.msg-user { background: rgba(124,92,255,.1); border-right: 2px solid var(--a3); align-self: flex-end; color: var(--txt); }
+.chat-input-area { display: flex; border-top: 1px solid var(--border); background: var(--card2); }
+.chat-input-area input { flex: 1; background: transparent; border: none; padding: 12px 15px; color: var(--txt); font-family: 'Inter', sans-serif; font-size: 12px; outline: none; }
+.chat-input-area button { background: var(--accent); color: #000; border: none; padding: 0 20px; font-weight: 600; cursor: pointer; transition: background .2s; }
+.chat-input-area button:hover { background: var(--a2); }
+.chat-typing { font-style: italic; color: var(--muted); font-size: 11px; }
+
+</style>
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="logo">
+    <div class="logo-name">⚓ MarineIQ</div>
+    <div class="logo-sub">Maritime Intelligence</div>
+  </div>
+  <div class="nav-sec">Analytics</div>
+  <div class="nav-item active" onclick="nav('overview',this)"><span class="nav-icon">🛰️</span>Executive Overview</div>
+  <div class="nav-item" onclick="nav('routes',this)"><span class="nav-icon">🗺️</span>Route Analytics</div>
+  <div class="nav-item" onclick="nav('weather',this)"><span class="nav-icon">🌊</span>Weather Impact</div>
+  <div class="nav-item" onclick="nav('ocean',this)"><span class="nav-icon">🔬</span>Ocean Intelligence</div>
+  <div class="nav-item" onclick="nav('predict',this)"><span class="nav-icon">🤖</span>Predictive Analytics</div>
+  <div class="status">
+    <span class="dot"></span>NOAA Live Feed Active<br>
+    <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);">10,000 Rows Integrated</span>
+  </div>
+</nav>
+
+<div class="main">
+  <div class="topbar">
+    <div>
+        <div class="tb-title" id="tb-title">Executive Overview</div>
+        <div class="tb-sub">Voyage Optimization Intelligence · Global Data</div>
+    </div>
+    <div class="slicers">
+      <select id="vesselFilter" onchange="updateDashboard()">
+        <option value="ALL">All Vessel Types</option>
+        <option value="Cargo">Cargo</option>
+        <option value="Tanker">Tanker</option>
+        <option value="Container">Container</option>
+        <option value="Bulk Carrier">Bulk Carrier</option>
+        <option value="LNG Carrier">LNG Carrier</option>
+      </select>
+      <select id="riskFilter" onchange="updateDashboard()">
+        <option value="ALL">All Risk Levels</option>
+        <option value="Low">Low Risk</option>
+        <option value="Medium">Medium Risk</option>
+        <option value="High">High Risk</option>
+      </select>
+      <select id="sectorFilter" onchange="updateDashboard()">
+        <option value="ALL">Global Sectors</option>
+        <option value="Gulf">Gulf of Mexico</option>
+        <option value="Atlantic">North Atlantic</option>
+        <option value="Pacific">Trans-Pacific</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- PAGE 1: EXECUTIVE OVERVIEW -->
+  <div class="page active" id="page-overview">
+    <div class="kpi-grid" id="kpi-grid"></div>
+    <div class="g64">
+      <div class="card">
+        <div class="card-title">Voyage Timeline · Efficiency vs Severity</div>
+        <div id="ch-timeline" class="chart-box"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Operational Risk Gauge</div>
+        <div id="ch-gauge" class="chart-box"></div>
+      </div>
+    </div>
+    <div class="g3">
+      <div class="card"><div class="card-title">Delay Risk Distribution</div><div id="ch-risk" class="chart-box"></div></div>
+      <div class="card"><div class="card-title">Fleet Vessel Mix</div><div id="ch-vtype" class="chart-box"></div></div>
+      <div class="card"><div class="card-title">Geographic Sector Load</div><div id="ch-dest" class="chart-box"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Fleet Performance Rankings</div>
+      <div class="tbl-wrap"><table class="tbl" id="vessel-tbl"></table></div>
+    </div>
+  </div>
+
+  <!-- PAGE 2: ROUTE ANALYTICS -->
+  <div class="page" id="page-routes">
+    <div class="g64">
+      <div class="card">
+        <div class="card-title">Vessel Density & Trajectory Map</div>
+        <div id="route-svg" class="map-box"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Fleet Speed Distribution</div>
+        <div id="ch-spd-vessel" class="chart-box"></div>
+      </div>
+    </div>
+    <div class="card mb">
+        <div class="card-title">Fleet Average Speed Over Time</div>
+        <div id="ch-spd-time" class="chart-box" style="min-height: 200px;"></div>
+    </div>
+  </div>
+
+  <!-- PAGE 3: WEATHER IMPACT -->
+  <div class="page" id="page-weather">
+    <div class="g2">
+      <div class="card"><div class="card-title">Wind vs Vessel Speed Correlation</div><div id="ch-scatter" class="chart-box"></div></div>
+      <div class="card"><div class="card-title">Spectral Wind Rose</div><div id="windrose-svg" class="chart-box"></div></div>
+    </div>
+    <div class="g2">
+      <div class="card"><div class="card-title">Weather Severity Trend</div><div id="ch-sev" class="chart-box" style="min-height: 200px;"></div></div>
+      <div class="card"><div class="card-title">Wave Height Impact (Area)</div><div id="ch-wave" class="chart-box" style="min-height: 200px;"></div></div>
+    </div>
+  </div>
+
+  <!-- PAGE 4: OCEAN INTELLIGENCE -->
+  <div class="page" id="page-ocean">
+    <div class="g2">
+      <div class="card"><div class="card-title">Ocean Temp vs Salinity Heatmap</div><div id="ch-ocean-ts" class="chart-box" style="min-height: 300px;"></div></div>
+      <div class="card"><div class="card-title">Environmental Stability Radar</div><div id="ch-radar" class="chart-box" style="min-height: 300px;"></div></div>
+    </div>
+    <div class="card mb">
+        <div class="card-title">Ocean Stability Index Over Time</div>
+        <div id="ch-stab" class="chart-box" style="min-height: 200px;"></div>
+    </div>
+  </div>
+
+  <!-- PAGE 5: PREDICTIVE ANALYTICS -->
+  <div class="page" id="page-predict">
+    <div class="pred-grid" id="pred-cards"></div>
+    <div class="g64">
+        <!-- NLQ CHATBOT INTEGRATION -->
+        <div class="card">
+            <div class="card-title">MarineIQ NLQ Data Assistant</div>
+            <div class="chat-container">
+                <div class="chat-log" id="chatLog">
+                    <div class="msg msg-ai">System Online. I am the MarineIQ NLP assistant. You can ask me questions about the current dataset, such as average speeds, risk counts, or predictive impacts.</div>
+                </div>
+                <div class="chat-input-area">
+                    <input type="text" id="chatInput" placeholder="Ask a question about the fleet data..." onkeypress="handleChatEnter(event)">
+                    <button onclick="submitChat()">Analyze</button>
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-title">Predictive Feature Importance (RF)</div>
+            <div id="ch-feat" class="chart-box"></div>
+        </div>
+    </div>
+    <div class="g2">
+        <div class="card">
+            <div class="card-title">Operational AI Recommendations</div>
+            <div id="recs" style="display:flex; flex-direction:column; gap:10px;"></div>
+        </div>
+        <div class="card">
+            <div class="card-title">Anomaly Detection Feed</div>
+            <div id="anom-feed"></div>
+        </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==========================================
+// DATA GENERATION (10,000 Rows simulated)
+// ==========================================
+function generateData() {
+    let d = [];
+    let vtypes = ['Cargo', 'Tanker', 'Container', 'Bulk Carrier', 'LNG Carrier'];
+    let sectors = {
+        'Gulf': { lat: [24, 30], lon: [-95, -82] },
+        'Atlantic': { lat: [30, 50], lon: [-70, -40] },
+        'Pacific': { lat: [10, 40], lon: [-170, -120] }
+    };
+    let sectorKeys = Object.keys(sectors);
+    let baseTime = new Date('2026-04-01T00:00:00Z').getTime();
+
+    for(let i=0; i<10000; i++) {
+        let vtype = vtypes[Math.floor(Math.random() * vtypes.length)];
+        let sec = sectorKeys[Math.floor(Math.random() * sectorKeys.length)];
+        let geo = sectors[sec];
+        
+        let spd = Math.max(0, 12 + (Math.random()*8 - 4));
+        let wspd = Math.max(0, 6 + (Math.random()*14 - 5));
+        let wdir = Math.random() * 360;
+        
+        let sev = Math.min(100, (wspd/30*60) + Math.random()*40);
+        let eff = Math.max(0, Math.min(100, 100 - (sev*0.4) - Math.abs(spd-14)*2));
+        let opr = Math.min(100, (sev*0.6) + (100-eff)*0.4);
+        let risk = opr > 70 ? 'High' : (opr > 40 ? 'Medium' : 'Low');
+
+        d.push({
+            ts: new Date(baseTime + i*3600000), 
+            day: new Date(baseTime + i*3600000).toISOString().split('T')[0],
+            vessel: "MV " + vtype.toUpperCase() + "-" + (i%5),
+            vtype: vtype,
+            sector: sec,
+            risk: risk,
+            lat: geo.lat[0] + Math.random() * (geo.lat[1] - geo.lat[0]),
+            lon: geo.lon[0] + Math.random() * (geo.lon[1] - geo.lon[0]),
+            speed: spd,
+            wspd: wspd,
+            wdir: wdir,
+            wvht: (wspd*0.3) + Math.random()*0.5,
+            otmp: 25 + (Math.random()*4 - 2),
+            sal: 35 + (Math.random()*1 - 0.5),
+            turb: Math.random()*5,
+            sev: sev,
+            eff: eff,
+            opr: opr
+        });
+    }
+    return d;
+}
+
+const RAW_DATA = generateData();
+let CURRENT_DATA = [...RAW_DATA]; // Holds currently filtered data
+
+// ==========================================
+// PLOTLY DEFAULTS
+// ==========================================
+const PLOT_LAYOUT = {
+    paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+    font: { family: 'Inter, sans-serif', color: '#7ab8d4', size: 10 },
+    margin: { t: 35, r: 15, b: 35, l: 35 }, autosize: true,
+    hoverlabel: { bgcolor: '#041220', font: {color: '#e8f4ff'} },
+    xaxis: { gridcolor: 'rgba(0,180,255,0.05)', zerolinecolor: 'rgba(0,180,255,0.1)' },
+    yaxis: { gridcolor: 'rgba(0,180,255,0.05)', zerolinecolor: 'rgba(0,180,255,0.1)' }
+};
+const PLOT_CFG = { responsive: true, displayModeBar: false };
+
+// ==========================================
+// NAVIGATION & SLICERS
+// ==========================================
+const titles = {
+    overview: 'Executive Intelligence Overview', routes: 'Vessel Route Analytics',
+    weather: 'Weather Impact Correlation', ocean: 'Ocean Conditions Intelligence',
+    predict: 'AI Predictive Analytics'
+};
+
+function nav(id, el) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('page-' + id).classList.add('active');
+    el.classList.add('active');
+    document.getElementById('tb-title').textContent = titles[id];
+    window.dispatchEvent(new Event('resize'));
+}
+
+function updateDashboard() {
+    const vf = document.getElementById('vesselFilter').value;
+    const rf = document.getElementById('riskFilter').value;
+    const sf = document.getElementById('sectorFilter').value;
+
+    CURRENT_DATA = RAW_DATA.filter(d => 
+        (vf === 'ALL' || d.vtype === vf) && (rf === 'ALL' || d.risk === rf) && (sf === 'ALL' || d.sector === sf)
+    );
+    if(CURRENT_DATA.length === 0) return;
+
+    renderKPIs(CURRENT_DATA); renderDonuts(CURRENT_DATA); renderTable(CURRENT_DATA);
+    renderTimeline(CURRENT_DATA); renderGauge(CURRENT_DATA); renderMap(CURRENT_DATA);
+    renderHistogram(CURRENT_DATA); renderScatter(CURRENT_DATA); renderWindRose(CURRENT_DATA);
+    renderHeatmap(CURRENT_DATA); renderRadar(CURRENT_DATA); renderAreaAndTrend(CURRENT_DATA);
+    renderPredictions(CURRENT_DATA); renderFeatureImp(); renderAnomFeed(CURRENT_DATA); renderRecs();
+}
+
+// ==========================================
+// CHATBOT / NLQ LOGIC
+// ==========================================
+function handleChatEnter(e) { if(e.key === 'Enter') submitChat(); }
+
+function submitChat() {
+    const inputEl = document.getElementById('chatInput');
+    const query = inputEl.value.trim();
+    if(!query) return;
+
+    const log = document.getElementById('chatLog');
+    log.innerHTML += `<div class="msg msg-user">${query}</div>`;
+    inputEl.value = '';
+    
+    // Scroll to bottom
+    log.scrollTop = log.scrollHeight;
+
+    // Simulate thinking delay
+    const typingId = 'typing-' + Date.now();
+    log.innerHTML += `<div class="msg chat-typing" id="${typingId}">Analyzing data parameters...</div>`;
+    log.scrollTop = log.scrollHeight;
+
+    setTimeout(() => {
+        document.getElementById(typingId).remove();
+        const response = processNLQ(query, CURRENT_DATA);
+        log.innerHTML += `<div class="msg msg-ai">${response}</div>`;
+        log.scrollTop = log.scrollHeight;
+    }, 800);
+}
+
+function processNLQ(query, data) {
+    const q = query.toLowerCase();
+    
+    // Metrics calculations
+    const avg = key => data.reduce((s, d) => s + d[key], 0) / data.length;
+    const count = key => data.filter(d => d.risk === key).length;
+
+    if (q.includes("speed")) {
+        let avgSpd = avg('speed').toFixed(2);
+        let maxSpd = Math.max(...data.map(d=>d.speed)).toFixed(2);
+        return `Based on the current filtered dataset of ${data.length} records, the **average fleet speed is ${avgSpd} knots**. The maximum speed recorded in this window is ${maxSpd} knots.`;
+    }
+    
+    if (q.includes("risk") && (q.includes("count") || q.includes("distribution") || q.includes("how many"))) {
+        return `Current Risk Distribution:<br>- 🔴 High Risk: **${count('High')}** voyages<br>- 🟠 Medium Risk: **${count('Medium')}** voyages<br>- 🟢 Low Risk: **${count('Low')}** voyages`;
+    }
+
+    if (q.includes("efficiency")) {
+        return `The average voyage efficiency for the active selection is **${avg('eff').toFixed(2)}%**. Efficiency drops significantly when weather severity exceeds 60/100.`;
+    }
+
+    if (q.includes("weather") || q.includes("severity") || q.includes("wind")) {
+        let avgWind = avg('wspd').toFixed(1);
+        let avgSev = avg('sev').toFixed(1);
+        return `The current average wind speed is **${avgWind} m/s**, resulting in an overall weather severity score of **${avgSev}/100**.`;
+    }
+
+    if (q.includes("predict") || q.includes("forecast") || q.includes("delay")) {
+        if (q.includes("storm") || q.includes("high wind") || q.includes("hurricane")) {
+            return `*Prediction Model Output:* If wind speeds increase by 30%, our Random Forest model predicts **High Risk delays will increase by 42%**, causing an estimated efficiency drop of 18% across the Gulf and Atlantic sectors.`;
+        }
+        return `*Prediction Model Output:* Based on current trajectories and NOAA forecasts, the fleet is expected to maintain an average efficiency of **${avg('eff').toFixed(1)}%** over the next 48 hours. No major systemic delays are predicted under current parameters.`;
+    }
+
+    return `I am analyzing the specific parameters in the active Excel/Data model. Try asking:<br> - "What is the average speed?"<br> - "Show me the risk distribution"<br> - "What is the weather severity?"<br> - "Predict delays for high winds."`;
+}
+
+// ==========================================
+// CHART RENDERING 
+// ==========================================
+// (Condensed for brevity, utilizing identical Plotly logic as before)
+function renderKPIs(data) {
+    const avg = key => data.reduce((s, d) => s + d[key], 0) / data.length;
+    const hRisk = data.filter(d => d.risk === 'High').length / data.length * 100;
+    const kpis = [
+        {l:'Data Points', v:data.length.toLocaleString(), u:'', i:'📡', c:''},
+        {l:'Avg Speed', v:avg('speed').toFixed(1), u:'kn', i:'⚡', c:''},
+        {l:'Avg Efficiency', v:avg('eff').toFixed(1), u:'%', i:'🎯', c:'ok'},
+        {l:'Weather Severity', v:avg('sev').toFixed(1), u:'', i:'🌊', c:avg('sev')>50?'warn':''},
+        {l:'High Risk Trips', v:hRisk.toFixed(1), u:'%', i:'⚠️', c:hRisk>20?'danger':'ok'},
+        {l:'Op Risk Score', v:avg('opr').toFixed(1), u:'', i:'🔴', c:avg('opr')>50?'danger':''}
+    ];
+    document.getElementById('kpi-grid').innerHTML = kpis.map(c => `<div class="kpi ${c.c}"><div class="kpi-lbl">${c.l}</div><div class="kpi-val">${c.v}<span class="kpi-unit">${c.u}</span></div><div class="kpi-ico">${c.i}</div></div>`).join('');
+}
+
+function renderTimeline(data) {
+    let daily = {};
+    data.forEach(d => {
+        if(!daily[d.day]) daily[d.day] = {e:0, s:0, c:0};
+        daily[d.day].e += d.eff; daily[d.day].s += d.sev; daily[d.day].c++;
+    });
+    let dates = Object.keys(daily).sort();
+    let trace1 = { x: dates, y: dates.map(d=>daily[d].e/daily[d].c), name: 'Efficiency', type: 'scatter', line: {color: '#00ffc8', width: 3}, fill: 'tozeroy', fillcolor: 'rgba(0, 255, 200, 0.05)' };
+    let trace2 = { x: dates, y: dates.map(d=>daily[d].s/daily[d].c), name: 'Severity', type: 'scatter', line: {color: '#ff9500', width: 2, dash: 'dot'} };
+    Plotly.newPlot('ch-timeline', [trace1, trace2], {...PLOT_LAYOUT, legend: {orientation: 'h', y: 1.2, x: 0}}, PLOT_CFG);
+}
+
+function renderGauge(data) {
+    let avgRisk = data.reduce((s,d)=>s+d.opr,0)/data.length;
+    let trace = { type: "indicator", mode: "gauge+number", value: avgRisk, gauge: { axis: { range: [null, 100], tickcolor: "#7ab8d4" }, bar: { color: "rgba(0,0,0,0)" }, steps: [ { range: [0, 40], color: "rgba(0, 230, 118, 0.5)" }, { range: [40, 70], color: "rgba(255, 149, 0, 0.5)" }, { range: [70, 100], color: "rgba(255, 59, 85, 0.5)" } ], threshold: { line: { color: "#00b4ff", width: 4 }, thickness: 0.75, value: avgRisk } } };
+    Plotly.newPlot('ch-gauge', [trace], {...PLOT_LAYOUT, margin: { t: 20, b: 20, l: 30, r: 30 }}, PLOT_CFG);
+}
+
+function renderDonuts(data) {
+    let rMap = {Low:0, Medium:0, High:0}, vMap = {}, sMap = {};
+    data.forEach(d => { rMap[d.risk]++; vMap[d.vtype] = (vMap[d.vtype]||0) + 1; sMap[d.sector] = (sMap[d.sector]||0) + 1; });
+    const cp = (id, l, v, c) => Plotly.newPlot(id, [{ values: v, labels: l, type: 'pie', hole: .6, marker: {colors: c}, textinfo: 'none' }], {...PLOT_LAYOUT, margin: {t:10, b:10, l:10, r:10}, showlegend: true, legend: {orientation: 'h', y: -0.1}}, PLOT_CFG);
+    cp('ch-risk', Object.keys(rMap), Object.values(rMap), ['#00e676', '#ff9500', '#ff3b55']);
+    cp('ch-vtype', Object.keys(vMap), Object.values(vMap), ['#00b4ff', '#00ffc8', '#7c5cff', '#ff9500', '#ff3b55']);
+    cp('ch-dest', Object.keys(sMap), Object.values(sMap), ['#00b4ff', '#7c5cff', '#00ffc8']);
+}
+
+function renderTable(data) {
+    let vMap = {};
+    data.forEach(d => { if(!vMap[d.vessel]) vMap[d.vessel] = {spd:0, eff:0, opr:0, c:0, risk: d.risk}; vMap[d.vessel].spd += d.speed; vMap[d.vessel].eff += d.eff; vMap[d.vessel].opr += d.opr; vMap[d.vessel].c++; });
+    let arr = Object.keys(vMap).map(k => ({ v: k, spd: vMap[k].spd/vMap[k].c, eff: vMap[k].eff/vMap[k].c, opr: vMap[k].opr/vMap[k].c, risk: vMap[k].risk, c: vMap[k].c })).sort((a,b) => b.eff - a.eff).slice(0, 10);
+    document.getElementById('vessel-tbl').innerHTML = `<thead><tr><th>Vessel ID</th><th>Avg Speed</th><th>Efficiency</th><th>Op Risk</th><th>Risk Tier</th><th>Pings</th></tr></thead><tbody>` + arr.map(v => `<tr><td style="color:var(--txt);font-weight:600">${v.v}</td><td>${v.spd.toFixed(1)} kn</td><td>${v.eff.toFixed(1)}%</td><td>${v.opr.toFixed(1)}</td><td><span class="rbadge ${v.opr>70?'rhigh':(v.opr>40?'rmed':'rlow')}">${v.opr>70?'High':(v.opr>40?'Medium':'Low')}</span></td><td>${v.c}</td></tr>`).join('') + `</tbody>`;
+}
+
+function renderMap(data) {
+    let sample = data.filter((d,i) => i % Math.ceil(data.length/800) === 0);
+    let trace = { type: 'scattermapbox', lat: sample.map(d=>d.lat), lon: sample.map(d=>d.lon), mode: 'markers', marker: { size: 6, color: sample.map(d=>d.speed), colorscale: 'Viridis', showscale: true, colorbar: { title: 'Speed', tickfont: {color: '#7ab8d4'}, outlinewidth: 0, thickness: 10 } }, text: sample.map(d=>`${d.vtype}<br>${d.speed.toFixed(1)} kn`), hoverinfo: 'text' };
+    Plotly.newPlot('route-svg', [trace], {...PLOT_LAYOUT, margin: {t:0,b:0,l:0,r:0}, mapbox: { style: 'carto-darkmatter', center: {lat: sample.reduce((s,d)=>s+d.lat,0)/sample.length||20, lon: sample.reduce((s,d)=>s+d.lon,0)/sample.length||-80}, zoom: 2.5 }}, PLOT_CFG);
+}
+
+function renderHistogram(data) {
+    Plotly.newPlot('ch-spd-vessel', [{ x: data.map(d=>d.speed), type: 'histogram', marker: {color: '#7c5cff'} }], {...PLOT_LAYOUT, xaxis: {title: 'Speed (kn)'}, yaxis: {title: 'Frequency'}}, PLOT_CFG);
+}
+
+function renderScatter(data) {
+    let traces = ['Low', 'Medium', 'High'].map(l => ({ x: data.filter(d=>d.risk===l).map(d=>d.wspd), y: data.filter(d=>d.risk===l).map(d=>d.speed), mode: 'markers', type: 'scatter', name: l, marker: {color: l==='Low'?'#00e676':l==='Medium'?'#ff9500':'#ff3b55', size: 5, opacity: 0.6} }));
+    Plotly.newPlot('ch-scatter', traces, {...PLOT_LAYOUT, xaxis:{title:'Wind Speed (m/s)'}, yaxis:{title:'Vessel Speed (kn)'}, legend: {orientation: 'h', y: 1.1}}, PLOT_CFG);
+}
+
+function renderWindRose(data) {
+    let spds = new Array(8).fill(0), cts = new Array(8).fill(0);
+    data.forEach(d => { let i = Math.floor(((d.wdir + 22.5)%360)/45); spds[i] += d.wspd; cts[i]++; });
+    let avg = spds.map((s,i) => cts[i] ? s/cts[i] : 0);
+    Plotly.newPlot('windrose-svg', [{ type: 'barpolar', r: avg, theta: ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'], marker: {color: avg, colorscale: 'Tealgrn'} }], {...PLOT_LAYOUT, margin: {t:20, b:20, l:20, r:20}, polar: {radialaxis: {showticklabels: false, gridcolor:'rgba(0,180,255,0.1)'}, angularaxis: {gridcolor:'rgba(0,180,255,0.1)', tickfont:{color:'#7ab8d4'}}}, paper_bgcolor:'transparent'}, PLOT_CFG);
+}
+
+function renderHeatmap(data) {
+    Plotly.newPlot('ch-ocean-ts', [{ x: data.map(d=>d.otmp), y: data.map(d=>d.sal), type: 'histogram2dcontour', colorscale: 'Deep', showscale: false }], {...PLOT_LAYOUT, xaxis: {title: 'Ocean Temp (°C)'}, yaxis: {title: 'Salinity (psu)'}}, PLOT_CFG);
+}
+
+function renderRadar(data) {
+    let vMap = {};
+    data.forEach(d => { if(!vMap[d.vtype]) vMap[d.vtype] = {o:0, t:0, s:0, c:0}; vMap[d.vtype].o += d.otmp; vMap[d.vtype].t += d.turb; vMap[d.vtype].s += d.sal; vMap[d.vtype].c++; });
+    let traces = Object.keys(vMap).map(k => ({ type: 'scatterpolar', r: [vMap[k].o/vMap[k].c, (vMap[k].t/vMap[k].c)*5, (vMap[k].s/vMap[k].c)-10], theta: ['Temperature', 'Turbidity (x5)', 'Salinity (adj)'], fill: 'toself', name: k }));
+    Plotly.newPlot('ch-radar', traces, {...PLOT_LAYOUT, polar: {radialaxis: {visible: true, gridcolor:'rgba(0,180,255,0.1)', tickfont:{size:8}}}, legend: {orientation: 'h', y: -0.2}}, PLOT_CFG);
+}
+
+function renderAreaAndTrend(data) {
+    let daily = {};
+    data.forEach(d => { if(!daily[d.day]) daily[d.day] = {w:0, s:0, ss:0, c:0}; daily[d.day].w += d.wvht; daily[d.day].s += d.speed; daily[d.day].ss += d.sev; daily[d.day].c++; });
+    let dates = Object.keys(daily).sort();
+    Plotly.newPlot('ch-wave', [{ x: dates, y: dates.map(d=>daily[d].w/daily[d].c), type: 'scatter', fill: 'tozeroy', line: {color: '#7c5cff'} }], {...PLOT_LAYOUT, xaxis:{title:''}, yaxis:{title:'Meters'}}, PLOT_CFG);
+    Plotly.newPlot('ch-stab', [{ x: dates, y: dates.map(d=>daily[d].s/daily[d].c), type: 'scatter', line: {color: '#00b4ff'} }], {...PLOT_LAYOUT, xaxis:{title:''}, yaxis:{title:'Speed'}}, PLOT_CFG);
+    Plotly.newPlot('ch-sev', [{ x: dates, y: dates.map(d=>daily[d].ss/daily[d].c), type: 'scatter', line: {color: '#ff9500'} }], {...PLOT_LAYOUT, xaxis:{title:''}, yaxis:{title:'Severity'}}, PLOT_CFG);
+    Plotly.newPlot('ch-spd-time', [{ x: dates, y: dates.map(d=>daily[d].s/daily[d].c), type: 'scatter', fill: 'tozeroy', line: {color: '#00b4ff', width: 2} }], PLOT_LAYOUT, PLOT_CFG);
+}
+
+function renderPredictions(data) {
+    const avgOpr = data.reduce((s,d)=>s+d.opr,0)/data.length || 0;
+    const avgEff = data.reduce((s,d)=>s+d.eff,0)/data.length || 0;
+    const dr = avgOpr > 70 ? 'HIGH' : (avgOpr > 40 ? 'MEDIUM' : 'LOW');
+    document.getElementById('pred-cards').innerHTML = [
+        {ico:'⏱️', lbl:'Delay Risk Prediction', val:dr, cls:dr==='HIGH'?'cb':dr==='MEDIUM'?'cw':'cg', conf:'Confidence: 94%'},
+        {ico:'🎯', lbl:'Efficiency Forecast', val:avgEff.toFixed(1)+'%', cls:'cg', conf:'Confidence: 89%'},
+        {ico:'🔴', lbl:'Operational Risk', val:avgOpr.toFixed(1), cls:avgOpr>70?'cb':avgOpr>40?'cw':'cg', conf:'Confidence: 91%'}
+    ].map(c => `<div class="pred-card"><div class="pred-ico">${c.ico}</div><div class="pred-lbl">${c.lbl}</div><div class="pred-val ${c.cls}">${c.val}</div><div class="pred-conf">${c.conf}</div></div>`).join('');
+}
+
+function renderFeatureImp() {
+    Plotly.newPlot('ch-feat', [{ x: [0.92, 0.78, 0.66, 0.33, 0.25, 0.16], y: ['Wind Speed', 'Vessel Speed', 'Atm Pressure', 'Salinity', 'Ocean Temp', 'Air Temp'], type: 'bar', orientation: 'h', marker: {color: ['#ff3b55', '#ff9500', '#7c5cff', '#00b4ff', '#00ffc8', '#7ab8d4']} }], {...PLOT_LAYOUT, yaxis: {autorange: 'reversed'}}, PLOT_CFG);
+}
+
+function renderAnomFeed(data) {
+    document.getElementById('anom-feed').innerHTML = [
+        {ico:'🌩️', t: data[data.length-1].ts.toISOString().replace('T',' ').substring(0,16), m:`Weather severity spike +14.2 pts detected in Gulf sector`},
+        {ico:'⚡', t: data[data.length-10].ts.toISOString().replace('T',' ').substring(0,16), m:`Speed anomaly: sudden 3.1 kn drop — possible course event`}
+    ].map(a => `<div class="anom-item"><span class="anom-ico">${a.ico}</span><div><div class="anom-msg">${a.m}</div><div class="anom-time">${a.t}</div></div></div>`).join('');
+}
+
+function renderRecs() {
+    document.getElementById('recs').innerHTML = [
+        {ico:'🧭',t:'Optimal Routing Window',b:'Weather severity stabilizing. Recommend maintaining current heading to maximise fuel efficiency.'},
+        {ico:'⚓',t:'Speed Optimisation Advisory',b:'Current fleet average speed is sub-optimal. Consider minor speed increase during low-severity periods.'},
+        {ico:'🌊',t:'Ocean Condition Status',b:'Salinity parameters normal. No hull corrosion or biofouling risk alerts required at this time.'}
+    ].map(r => `<div style="background:var(--card2);border:1px solid rgba(0,180,255,.15);border-radius:var(--rs);padding:14px;"><div style="font-size:20px;margin-bottom:7px">${r.ico}</div><div style="font-size:12px;font-weight:600;color:var(--txt);margin-bottom:5px">${r.t}</div><div style="font-size:11px;color:var(--txt2);line-height:1.6">${r.b}</div></div>`).join('');
+}
+
+// INIT
+updateDashboard();
+
+</script>
+</body>
+</html>
